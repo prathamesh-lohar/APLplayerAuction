@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Captain Player Auction</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Captain Player Auction</h1>
+      <p>Routed pages: login, profile, player selection, and auction.</p>
+    </header>
+
+    <nav class="top-nav">
+      <a href="#/login">Login</a>
+      <a href="#/admin/captains">Admin: Captains</a>
+      <a href="#/admin/selection">Admin: Selection</a>
+      <a href="#/admin/auction">Admin: Auction</a>
+      <a href="#/captain/selection">Captain: Selection</a>
+      <a href="#/captain/auction">Captain: Auction</a>
+      <a href="#/player/profile">Player: Profile</a>
+      <button id="logoutBtn">Logout</button>
+    </nav>
+
+    <main>
+      <p id="identityStatus">Not logged in</p>
+      <p id="phaseBadge"></p>
+
+      <section id="page-login" class="page">
+        <div class="panel">
+          <h2>Login</h2>
+          <div class="row">
+            <select id="loginRole">
+              <option value="admin">Admin</option>
+              <option value="captain">Captain</option>
+              <option value="player">Player</option>
+            </select>
+            <input id="loginUsername" placeholder="Username" />
+            <input id="loginPassword" type="password" placeholder="Password" />
+            <button id="loginBtn">Login</button>
+          </div>
+          <p class="hint">Default admin: <strong>admin / admin123</strong></p>
+        </div>
+
+        <div class="panel">
+          <h2>Player Signup</h2>
+          <div class="row wrap">
+            <input id="signupUsername" placeholder="Create username" />
+            <input id="signupPassword" type="password" placeholder="Create password" />
+            <input id="signupName" placeholder="Player name" />
+            <input id="signupRole" placeholder="Role" />
+            <input id="signupCity" placeholder="City" />
+            <input id="signupPhoto" type="file" accept="image/*" />
+          </div>
+          <textarea id="signupAchievements" placeholder="Achievements"></textarea>
+          <button id="signupBtn">Create Player Account</button>
+        </div>
+      </section>
+
+      <section id="page-admin-captains" class="page hidden">
+        <div class="panel">
+          <h2>Admin - Captain Creation</h2>
+          <div class="row">
+            <input id="captainName" placeholder="Captain name" />
+            <input id="captainUsername" placeholder="Captain username" />
+            <input id="captainPassword" type="password" placeholder="Captain password" />
+            <button id="createCaptainBtn">Create Captain</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="page-admin-selection" class="page hidden">
+        <div class="panel">
+          <h2>Admin - Player Selection Control</h2>
+          <button id="startSelectionBtn">Start Selection</button>
+          <button id="resetBtn">Reset Round</button>
+        </div>
+        <div class="panel">
+          <h3>Players</h3>
+          <div id="playersListAdminSelection" class="cards"></div>
+        </div>
+      </section>
+
+      <section id="page-admin-auction" class="page hidden">
+        <div class="panel">
+          <h2>Admin - Auction Control</h2>
+          <button id="startAuctionBtn">Create Auction</button>
+          <button id="closeBidBtn">Close Current Bid</button>
+        </div>
+        <div class="grid">
+          <article>
+            <h3>Current Auction</h3>
+            <div id="auctionCardAdmin" class="cards"></div>
+            <h4>Queue</h4>
+            <ol id="queueListAdmin"></ol>
+          </article>
+          <article>
+            <h3>Captains</h3>
+            <div id="captainBoardAdmin" class="cards"></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="page-captain-selection" class="page hidden">
+        <div class="panel">
+          <h2>Captain - Player Selection</h2>
+          <button id="lockBtn">Lock Selections</button>
+        </div>
+        <div class="panel">
+          <h3>Players</h3>
+          <div id="playersListCaptain" class="cards"></div>
+        </div>
+      </section>
+
+      <section id="page-captain-auction" class="page hidden">
+        <div class="grid">
+          <article>
+            <h3>Auction</h3>
+            <div id="auctionCardCaptain" class="cards"></div>
+            <h4>Queue</h4>
+            <ol id="queueListCaptain"></ol>
+          </article>
+          <article>
+            <h3>Captains</h3>
+            <div id="captainBoardCaptain" class="cards"></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="page-player-profile" class="page hidden">
+        <div class="panel">
+          <h2>Player - Profile</h2>
+          <div class="row wrap">
+            <input id="playerName" placeholder="Name" />
+            <input id="playerRole" placeholder="Role" />
+            <input id="playerCity" placeholder="City" />
+            <input id="playerPhoto" type="file" accept="image/*" />
+          </div>
+          <textarea id="playerAchievements" placeholder="Achievements"></textarea>
+          <button id="updatePlayerBtn">Update My Profile</button>
+        </div>
+        <div class="panel">
+          <h3>My Public Profile Card</h3>
+          <div id="myPlayerCard"></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h3>Event Log</h3>
+        <ul id="messages"></ul>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

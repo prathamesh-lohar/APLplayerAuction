@@ -1,0 +1,9 @@
+{
+  "name": "apl-player-auction",
+  "version": "1.0.0",
+  "description": "Websocket-based captain player auction app",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
