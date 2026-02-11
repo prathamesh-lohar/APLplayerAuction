@@ -1,9 +1,16 @@
 {
-  "name": "apl-player-auction",
+  "name": "cricket-auction-root",
   "version": "1.0.0",
-  "description": "Websocket-based captain player auction app",
-  "main": "server.js",
+  "description": "Real-Time Cricket Auction Engine - Root package",
   "scripts": {
-    "start": "node server.js"
-  }
+    "install-all": "cd backend && npm install && cd ../big-screen && npm install && cd ../captain-app && npm install && cd ../admin-panel && npm install",
+    "start-backend": "cd backend && npm start",
+    "dev-backend": "cd backend && npm run dev",
+    "start-bigscreen": "cd big-screen && npm start",
+    "start-captain": "cd captain-app && npm start",
+    "start-admin": "cd admin-panel && npm start"
+  },
+  "keywords": ["auction", "cricket", "websocket", "real-time"],
+  "author": "",
+  "license": "MIT"
 }

@@ -1,0 +1,51 @@
+name,category,basePrice,photo,matches,runs,wickets,average,strikeRate
+Virat Kohli,Batsman,15,/placeholder-player.jpg,200,7540,0,45.8,138.4
+Rohit Sharma,Batsman,14,/placeholder-player.jpg,210,6850,8,42.3,141.2
+Jasprit Bumrah,Bowler,12,/placeholder-player.jpg,150,125,248,18.6,98.2
+Hardik Pandya,All-Rounder,14,/placeholder-player.jpg,180,3250,118,32.8,145.6
+MS Dhoni,Wicket-Keeper,16,/placeholder-player.jpg,250,5580,0,38.9,127.3
+Ravindra Jadeja,All-Rounder,13,/placeholder-player.jpg,220,2850,145,28.5,128.9
+KL Rahul,Wicket-Keeper,13,/placeholder-player.jpg,170,4680,0,42.1,135.8
+Rishabh Pant,Wicket-Keeper,12,/placeholder-player.jpg,120,3250,0,35.2,142.5
+Yuzvendra Chahal,Bowler,10,/placeholder-player.jpg,135,85,185,22.8,105.3
+Mohammed Shami,Bowler,11,/placeholder-player.jpg,140,180,195,21.4,102.8
+Suryakumar Yadav,Batsman,12,/placeholder-player.jpg,145,4120,0,38.5,152.3
+Shreyas Iyer,Batsman,11,/placeholder-player.jpg,135,3850,0,36.8,128.4
+Shikhar Dhawan,Batsman,12,/placeholder-player.jpg,225,6580,0,40.2,126.7
+Shubman Gill,Batsman,10,/placeholder-player.jpg,95,2750,0,34.5,132.6
+Ishan Kishan,Wicket-Keeper,11,/placeholder-player.jpg,105,2880,0,32.4,139.8
+Axar Patel,All-Rounder,10,/placeholder-player.jpg,125,1850,98,24.6,118.5
+Washington Sundar,All-Rounder,9,/placeholder-player.jpg,98,1450,75,22.8,116.3
+Bhuvneshwar Kumar,Bowler,10,/placeholder-player.jpg,165,285,175,24.5,98.6
+Kuldeep Yadav,Bowler,9,/placeholder-player.jpg,105,65,140,26.2,108.4
+Deepak Chahar,Bowler,9,/placeholder-player.jpg,85,320,95,28.4,115.2
+Prithvi Shaw,Batsman,8,/placeholder-player.jpg,75,2150,0,32.8,145.8
+Ruturaj Gaikwad,Batsman,9,/placeholder-player.jpg,80,2480,0,36.2,135.4
+Devdutt Padikkal,Batsman,8,/placeholder-player.jpg,70,1950,0,34.6,128.9
+Venkatesh Iyer,All-Rounder,9,/placeholder-player.jpg,65,1680,24,28.5,132.7
+Avesh Khan,Bowler,8,/placeholder-player.jpg,72,45,88,26.8,105.6
+Shardul Thakur,All-Rounder,10,/placeholder-player.jpg,118,1250,105,22.4,112.8
+Harshal Patel,Bowler,9,/placeholder-player.jpg,95,185,115,28.6,110.2
+Prasidh Krishna,Bowler,8,/placeholder-player.jpg,68,35,82,29.4,106.8
+T Natarajan,Bowler,8,/placeholder-player.jpg,55,28,65,25.8,104.3
+Varun Chakravarthy,Bowler,8,/placeholder-player.jpg,52,15,58,28.2,112.5
+Rahul Tewatia,All-Rounder,8,/placeholder-player.jpg,85,1150,45,26.8,138.4
+Nitish Rana,All-Rounder,9,/placeholder-player.jpg,110,2580,18,32.4,135.6
+Dinesh Karthik,Wicket-Keeper,10,/placeholder-player.jpg,185,3250,0,28.6,142.8
+Sanju Samson,Wicket-Keeper,11,/placeholder-player.jpg,125,3580,0,35.8,138.9
+Quinton de Kock,Wicket-Keeper,12,/placeholder-player.jpg,95,2850,0,38.2,132.5
+David Warner,Batsman,13,/placeholder-player.jpg,135,4250,0,42.5,135.8
+Jos Buttler,Wicket-Keeper,14,/placeholder-player.jpg,105,3580,0,39.6,148.2
+Glenn Maxwell,All-Rounder,12,/placeholder-player.jpg,125,2850,68,28.4,154.6
+Ben Stokes,All-Rounder,13,/placeholder-player.jpg,85,1950,42,32.5,135.8
+Rashid Khan,Bowler,12,/placeholder-player.jpg,95,450,125,18.5,142.5
+Kagiso Rabada,Bowler,12,/placeholder-player.jpg,88,120,108,22.8,96.4
+Trent Boult,Bowler,11,/placeholder-player.jpg,75,85,92,24.6,102.5
+Mitchell Starc,Bowler,13,/placeholder-player.jpg,55,95,68,26.8,108.2
+Andre Russell,All-Rounder,13,/placeholder-player.jpg,98,2150,78,26.5,168.9
+Kieron Pollard,All-Rounder,12,/placeholder-player.jpg,145,3250,65,28.8,152.4
+Sunil Narine,All-Rounder,11,/placeholder-player.jpg,135,1850,145,24.2,165.3
+Chris Gayle,Batsman,12,/placeholder-player.jpg,125,4250,0,36.8,148.6
+AB de Villiers,Batsman,14,/placeholder-player.jpg,155,4580,0,41.2,158.4
+Faf du Plessis,Batsman,11,/placeholder-player.jpg,95,2650,0,38.5,128.7
+Jonny Bairstow,Wicket-Keeper,11,/placeholder-player.jpg,68,1850,0,36.2,142.8
