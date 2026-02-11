@@ -15,13 +15,6 @@ const playerSchema = new mongoose.Schema({
     required: true,
     enum: ['Batsman', 'Bowler', 'All-Rounder', 'Wicket-Keeper']
   },
-  stats: {
-    matches: { type: Number, default: 0 },
-    runs: { type: Number, default: 0 },
-    wickets: { type: Number, default: 0 },
-    average: { type: Number, default: 0 },
-    strikeRate: { type: Number, default: 0 }
-  },
   basePrice: {
     type: Number,
     required: true,

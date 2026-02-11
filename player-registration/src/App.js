@@ -8,12 +8,7 @@ function App() {
   const [formData, setFormData] = useState({
     name: '',
     category: 'Batsman',
-    basePrice: '5',
-    matches: '',
-    runs: '',
-    wickets: '',
-    average: '',
-    strikeRate: ''
+    basePrice: '5'
   });
   const [photo, setPhoto] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
@@ -79,12 +74,7 @@ function App() {
       setFormData({
         name: '',
         category: 'Batsman',
-        basePrice: '5',
-        matches: '',
-        runs: '',
-        wickets: '',
-        average: '',
-        strikeRate: ''
+        basePrice: '5'
       });
       setPhoto(null);
       setPhotoPreview(null);
@@ -176,74 +166,6 @@ function App() {
                   min="5"
                   max="100"
                   required
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Career Statistics */}
-          <div className="form-section">
-            <h3>Career Statistics (Optional)</h3>
-            <div className="form-grid">
-              <div className="form-group">
-                <label>Matches Played</label>
-                <input
-                  type="number"
-                  name="matches"
-                  value={formData.matches}
-                  onChange={handleInputChange}
-                  min="0"
-                  placeholder="0"
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Total Runs</label>
-                <input
-                  type="number"
-                  name="runs"
-                  value={formData.runs}
-                  onChange={handleInputChange}
-                  min="0"
-                  placeholder="0"
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Total Wickets</label>
-                <input
-                  type="number"
-                  name="wickets"
-                  value={formData.wickets}
-                  onChange={handleInputChange}
-                  min="0"
-                  placeholder="0"
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Batting Average</label>
-                <input
-                  type="number"
-                  name="average"
-                  value={formData.average}
-                  onChange={handleInputChange}
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Strike Rate</label>
-                <input
-                  type="number"
-                  name="strikeRate"
-                  value={formData.strikeRate}
-                  onChange={handleInputChange}
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
                 />
               </div>
             </div>

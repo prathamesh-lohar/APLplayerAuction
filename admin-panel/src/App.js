@@ -169,12 +169,7 @@ function App() {
     setPlayerForm({
       name: player.name,
       category: player.category,
-      basePrice: player.basePrice,
-      matches: player.stats?.matches || '',
-      runs: player.stats?.runs || '',
-      wickets: player.stats?.wickets || '',
-      average: player.stats?.average || '',
-      strikeRate: player.stats?.strikeRate || ''
+      basePrice: player.basePrice
     });
   };
 
@@ -543,7 +538,7 @@ function App() {
               <h3>Instructions</h3>
               <ol>
                 <li>Create individual captains using the form above OR generate 20 teams in bulk</li>
-                <li>Upload players via CSV (columns: name, category, basePrice, stats)</li>
+                <li>Upload players via CSV (columns: name, category, basePrice, photo)</li>
                 <li>Start auction by selecting a player</li>
                 <li>Monitor team connections and bids in real-time</li>
                 <li>Use pause/resume controls as needed</li>
@@ -591,47 +586,6 @@ function App() {
                   min="5"
                   required
                 />
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Matches</label>
-                  <input
-                    type="number"
-                    value={playerForm.matches}
-                    onChange={(e) => setPlayerForm({...playerForm, matches: e.target.value})}
-                    min="0"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Runs</label>
-                  <input
-                    type="number"
-                    value={playerForm.runs}
-                    onChange={(e) => setPlayerForm({...playerForm, runs: e.target.value})}
-                    min="0"
-                  />
-                </div>
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Wickets</label>
-                  <input
-                    type="number"
-                    value={playerForm.wickets}
-                    onChange={(e) => setPlayerForm({...playerForm, wickets: e.target.value})}
-                    min="0"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Average</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={playerForm.average}
-                    onChange={(e) => setPlayerForm({...playerForm, average: e.target.value})}
-                    min="0"
-                  />
-                </div>
               </div>
               <div className="modal-actions">
                 <button type="button" onClick={() => setEditingPlayer(null)} className="btn-secondary">

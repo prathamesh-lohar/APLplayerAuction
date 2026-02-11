@@ -88,7 +88,7 @@ function App() {
             remainingPoints: prev.remainingPoints - data.amount,
             rosterSlotsFilled: prev.rosterSlotsFilled + 1,
             players: [...prev.players, data.player],
-            maxBid: prev.remainingPoints - data.amount - ((11 - (prev.rosterSlotsFilled + 1)) * 5)
+            maxBid: prev.remainingPoints - data.amount - ((11 - (prev.rosterSlotsFilled + 1)) * 30)
           };
         }
         return prev;
@@ -129,10 +129,10 @@ function App() {
     window.location.reload();
   };
 
-  const handleBid = () => {
+  const handleBid = (increment = 5) => {
     if (!socket || !teamData || !currentPlayer) return;
 
-    const nextBid = currentBid.amount + 1;
+    const nextBid = currentBid.amount + increment;
     const maxBid = teamData.maxBid;
 
     if (nextBid > maxBid) {
@@ -144,13 +144,13 @@ function App() {
     socket.emit('bid:place', { amount: nextBid });
   };
 
-  const getNextBidAmount = () => {
-    return currentBid.amount + 1;
+  const getNextBidAmount = (increment = 5) => {
+    return currentBid.amount + increment;
   };
 
-  const canBid = () => {
+  const canBid = (increment = 5) => {
     if (!teamData || !currentPlayer) return false;
-    const nextBid = getNextBidAmount();
+    const nextBid = getNextBidAmount(increment);
     return nextBid <= teamData.maxBid && nextBid <= teamData.remainingPoints;
   };
 
@@ -273,16 +273,27 @@ function App() {
 
             {/* Bid Button */}
             <div className="bid-controls">
-              {canBid() ? (
-                <button 
-                  className={`bid-button ${bidSuccess ? 'bid-success' : ''}`}
-                  onClick={handleBid}
-                  disabled={!canBid()}
-                >
-                  <span className="bid-button-text">
-                    {bidSuccess ? '✓ Bid Placed!' : `Bid ₹${getNextBidAmount()}`}
-                  </span>
-                </button>
+              {canBid(5) || canBid(10) ? (
+                <div className="bid-buttons-group">
+                  <button 
+                    className={`bid-button ${bidSuccess ? 'bid-success' : ''}`}
+                    onClick={() => handleBid(5)}
+                    disabled={!canBid(5)}
+                  >
+                    <span className="bid-button-text">
+                      {bidSuccess ? '✓ Bid Placed!' : `+₹5 (₹${getNextBidAmount(5)})`}
+                    </span>
+                  </button>
+                  <button 
+                    className={`bid-button ${bidSuccess ? 'bid-success' : ''}`}
+                    onClick={() => handleBid(10)}
+                    disabled={!canBid(10)}
+                  >
+                    <span className="bid-button-text">
+                      {bidSuccess ? '✓ Bid Placed!' : `+₹10 (₹${getNextBidAmount(10)})`}
+                    </span>
+                  </button>
+                </div>
               ) : (
                 <div className="cannot-bid">
                   <p>Cannot bid higher</p>

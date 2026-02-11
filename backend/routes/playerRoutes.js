@@ -35,7 +35,7 @@ const upload = multer({
 // Player self-registration with photo upload
 router.post('/register', upload.single('photo'), async (req, res) => {
   try {
-    const { name, category, basePrice, matches, runs, wickets, average, strikeRate } = req.body;
+    const { name, category, basePrice } = req.body;
 
     // Validate required fields
     if (!name || !category) {
@@ -53,14 +53,7 @@ router.post('/register', upload.single('photo'), async (req, res) => {
       name,
       category,
       photo: photoPath,
-      basePrice: parseInt(basePrice) || 30,
-      stats: {
-        matches: parseInt(matches) || 0,
-        runs: parseInt(runs) || 0,
-        wickets: parseInt(wickets) || 0,
-        average: parseFloat(average) || 0,
-        strikeRate: parseFloat(strikeRate) || 0
-      }
+      basePrice: parseInt(basePrice) || 30
     });
 
     await player.save();
@@ -138,28 +131,6 @@ router.put('/:id', upload.single('photo'), async (req, res) => {
       player.photo = `/uploads/${req.file.filename}`;
     }
 
-    // Update stats only if valid values are provided
-    if (req.body.matches !== undefined && req.body.matches !== '') {
-      const matches = parseInt(req.body.matches);
-      if (!isNaN(matches)) player.stats.matches = matches;
-    }
-    if (req.body.runs !== undefined && req.body.runs !== '') {
-      const runs = parseInt(req.body.runs);
-      if (!isNaN(runs)) player.stats.runs = runs;
-    }
-    if (req.body.wickets !== undefined && req.body.wickets !== '') {
-      const wickets = parseInt(req.body.wickets);
-      if (!isNaN(wickets)) player.stats.wickets = wickets;
-    }
-    if (req.body.average !== undefined && req.body.average !== '') {
-      const average = parseFloat(req.body.average);
-      if (!isNaN(average)) player.stats.average = average;
-    }
-    if (req.body.strikeRate !== undefined && req.body.strikeRate !== '') {
-      const strikeRate = parseFloat(req.body.strikeRate);
-      if (!isNaN(strikeRate)) player.stats.strikeRate = strikeRate;
-    }
-
     await player.save();
 
     res.json({ 
@@ -210,14 +181,7 @@ router.post('/bulk-upload', upload.single('csvFile'), async (req, res) => {
           name: row.name || row.Name,
           category: row.category || row.Category,
           photo: row.photo || row.Photo || '/placeholder-player.jpg',
-          basePrice: parseInt(row.basePrice || row['Base Price']) || 5,
-          stats: {
-            matches: parseInt(row.matches || row.Matches) || 0,
-            runs: parseInt(row.runs || row.Runs) || 0,
-            wickets: parseInt(row.wickets || row.Wickets) || 0,
-            average: parseFloat(row.average || row.Average) || 0,
-            strikeRate: parseFloat(row.strikeRate || row['Strike Rate']) || 0
-          }
+          basePrice: parseInt(row.basePrice || row['Base Price']) || 5
         });
       })
       .on('end', async () => {
