@@ -42,7 +42,11 @@ function App() {
   const [teamForm, setTeamForm] = useState({});
 
   useEffect(() => {
-    const newSocket = io(SOCKET_URL);
+    const newSocket = io(SOCKET_URL, {
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionAttempts: 10
+    });
     setSocket(newSocket);
 
     // Check for saved admin session
@@ -54,6 +58,26 @@ function App() {
       // Auto-login with saved credentials
       newSocket.emit('admin:login', { password: savedPassword });
     }
+
+    // Handle connection events
+    newSocket.on('connect', () => {
+      console.log('Admin panel connected');
+      if (savedAdminAuth === 'true' && savedPassword) {
+        newSocket.emit('admin:login', { password: savedPassword });
+      }
+    });
+
+    newSocket.on('disconnect', () => {
+      console.log('Admin panel disconnected');
+    });
+
+    newSocket.on('reconnect', () => {
+      console.log('Admin panel reconnected');
+      if (savedAdminAuth === 'true' && savedPassword) {
+        newSocket.emit('admin:login', { password: savedPassword });
+      }
+      loadData(); // Reload data on reconnection
+    });
 
     newSocket.on('auth:success', () => {
       setIsAuthenticated(true);
@@ -73,6 +97,34 @@ function App() {
 
     newSocket.on('teams:status', (data) => {
       setTeams(data.teams);
+    });
+
+    // Listen for player sold to update player list and stats
+    newSocket.on('player:sold', (data) => {
+      // Reload data to get updated player statuses and team info
+      loadData();
+    });
+
+    // Listen for auction started to update player status
+    newSocket.on('auction:started', (data) => {
+      // Update the specific player's status
+      setPlayers(prev => prev.map(p => 
+        p._id === data.player._id ? { ...p, status: 'IN_AUCTION' } : p
+      ));
+    });
+
+    // Listen for bid updates (optional - for real-time bid display)
+    newSocket.on('bid:new', (data) => {
+      // Update auction state if needed
+      if (auctionState) {
+        setAuctionState(prev => ({
+          ...prev,
+          currentHighBid: {
+            amount: data.amount,
+            team: { teamName: data.teamName }
+          }
+        }));
+      }
     });
 
     // Auto auction events
@@ -129,8 +181,18 @@ function App() {
       setAutoAuctionStatus(data);
     });
 
-    return () => newSocket.close();
-  }, []);
+    // Set up periodic data refresh every 10 seconds
+    const refreshInterval = setInterval(() => {
+      if (isAuthenticated) {
+        loadData();
+      }
+    }, 10000);
+
+    return () => {
+      clearInterval(refreshInterval);
+      newSocket.close();
+    };
+  }, [isAuthenticated]);
 
   const loadData = async () => {
     try {
@@ -598,7 +660,17 @@ function App() {
 
         {activeTab === 'teams' && (
           <div className="teams-panel">
-            <h2>Teams Status</h2>
+            <div className="teams-header-section">
+              <h2>Teams Status</h2>
+              <a 
+                href={`${API_URL}/teams/download/all-teams`} 
+                download 
+                className="btn-primary"
+                style={{ textDecoration: 'none' }}
+              >
+                📥 Download All Teams
+              </a>
+            </div>
             <div className="teams-grid">
               {teams.map(team => (
                 <div key={team._id} className={`team-card ${team.isOnline ? 'online' : 'offline'}`}>
@@ -612,6 +684,14 @@ function App() {
                   <p><strong>Squad:</strong> {team.rosterSlotsFilled}/11</p>
                   <p><strong>Max Bid:</strong> ₹{team.remainingPoints - ((11 - team.rosterSlotsFilled) * 5)}</p>
                   <div className="team-actions">
+                    <a 
+                      href={`${API_URL}/teams/${team._id}/download`} 
+                      download 
+                      className="btn-primary btn-sm"
+                      style={{ textDecoration: 'none', display: 'inline-block' }}
+                    >
+                      📥
+                    </a>
                     <button onClick={() => openEditTeam(team)} className="btn-secondary btn-sm">
                       Edit
                     </button>

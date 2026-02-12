@@ -356,6 +356,15 @@ body {
   box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
 }
 
+.bid-button-base {
+  background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
+  box-shadow: 0 6px 20px rgba(255, 152, 0, 0.4);
+}
+
+.bid-button-base:hover:not(:disabled) {
+  box-shadow: 0 8px 25px rgba(255, 152, 0, 0.5);
+}
+
 .bid-button:hover:not(:disabled) {
   transform: translateY(-3px);
   box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
@@ -438,6 +447,37 @@ body {
   border-radius: 15px;
   padding: 1.5rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.squad-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.squad-header h3 {
+  margin: 0;
+  color: #333;
+}
+
+.download-squad-btn {
+  padding: 0.5rem 1rem;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.download-squad-btn:hover {
+  background: #45a049;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
 }
 
 .my-squad h3 {

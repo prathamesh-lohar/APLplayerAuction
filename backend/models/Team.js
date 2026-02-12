@@ -31,7 +31,7 @@ const teamSchema = new mongoose.Schema({
     type: Number,
     default: 0,
     min: 0,
-    max: 11
+    max: 14
   },
   players: [{
     type: mongoose.Schema.Types.ObjectId,
@@ -63,9 +63,9 @@ teamSchema.methods.comparePin = async function(candidatePin) {
 
 // Method to calculate max bid
 teamSchema.methods.getMaxBid = function() {
-  const remainingSlots = 11 - this.rosterSlotsFilled;
+  const remainingSlots = 14 - this.rosterSlotsFilled;
   if (remainingSlots <= 0) return 0;
-  return this.remainingPoints - (remainingSlots * 5);
+  return this.remainingPoints - (remainingSlots * 30);
 };
 
 module.exports = mongoose.model('Team', teamSchema);

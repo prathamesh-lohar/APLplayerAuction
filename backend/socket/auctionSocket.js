@@ -111,10 +111,21 @@ module.exports = (io) => {
 
         // Validate bid amount
         const currentHighBid = auctionState.currentHighBid.amount;
-        if (amount <= currentHighBid) {
-          return socket.emit('bid:error', { 
-            message: `Bid must be higher than ${currentHighBid}` 
-          });
+        const hasNoBids = !auctionState.currentHighBid.team; // No bids placed yet
+        
+        // Allow base price bid if no bids yet, otherwise must be higher than current
+        if (hasNoBids) {
+          if (amount < currentHighBid) {
+            return socket.emit('bid:error', { 
+              message: `Bid must be at least ${currentHighBid}` 
+            });
+          }
+        } else {
+          if (amount <= currentHighBid) {
+            return socket.emit('bid:error', { 
+              message: `Bid must be higher than ${currentHighBid}` 
+            });
+          }
         }
 
         // Validate max bid (Safety Rule)
@@ -375,7 +386,11 @@ module.exports = (io) => {
   }
 
   function resetTimer(io) {
-    timerValue = parseInt(process.env.TIMER_DURATION) || 20;
+    // If timer is below 10 seconds, reset to 10 seconds
+    // Otherwise, reset to full duration (20 seconds)
+    if (timerValue < 10) {
+      timerValue = 10;
+    }
     io.emit('timer:reset', { value: timerValue });
   }
 
