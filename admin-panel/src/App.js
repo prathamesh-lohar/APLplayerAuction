@@ -19,7 +19,6 @@ function App() {
   const [players, setPlayers] = useState([]);
   const [teams, setTeams] = useState([]);
   const [auctionState, setAuctionState] = useState(null);
-  const [selectedPlayer, setSelectedPlayer] = useState(null);
   
   // Auto auction state
   const [autoAuctionStatus, setAutoAuctionStatus] = useState({
@@ -115,16 +114,13 @@ function App() {
 
     // Listen for bid updates (optional - for real-time bid display)
     newSocket.on('bid:new', (data) => {
-      // Update auction state if needed
-      if (auctionState) {
-        setAuctionState(prev => ({
-          ...prev,
-          currentHighBid: {
-            amount: data.amount,
-            team: { teamName: data.teamName }
-          }
-        }));
-      }
+      setAuctionState(prev => prev ? {
+        ...prev,
+        currentHighBid: {
+          amount: data.amount,
+          team: { teamName: data.teamName }
+        }
+      } : prev);
     });
 
     // Auto auction events
@@ -257,7 +253,6 @@ function App() {
   const startAuction = (playerId) => {
     if (socket) {
       socket.emit('admin:startAuction', { playerId });
-      setSelectedPlayer(null);
     }
   };
 
@@ -288,12 +283,6 @@ function App() {
       if (socket) {
         socket.emit('admin:stopAutoAuction');
       }
-    }
-  };
-
-  const getAutoAuctionStatus = () => {
-    if (socket) {
-      socket.emit('admin:getAutoAuctionStatus');
     }
   };
 
