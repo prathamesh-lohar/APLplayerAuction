@@ -5,6 +5,9 @@ const AuctionState = require('../models/AuctionState');
 
 let auctionTimer = null;
 let timerValue = parseInt(process.env.TIMER_DURATION) || 20;
+let playerQueue = [];
+let isAutoAuction = false;
+let unsoldPlayers = [];
 
 module.exports = (io) => {
   // Store connected clients
@@ -178,36 +181,8 @@ module.exports = (io) => {
           return socket.emit('error', { message: 'Player not available' });
         }
 
-        // Update player status
-        player.status = 'IN_AUCTION';
-        await player.save();
-
-        // Get or create auction state
-        let auctionState = await AuctionState.findOne();
-        if (!auctionState) {
-          auctionState = new AuctionState();
-        }
-
-        auctionState.currentPlayer = player._id;
-        auctionState.isActive = true;
-        auctionState.isPaused = false;
-        auctionState.currentHighBid = {
-          amount: player.basePrice,
-          team: null
-        };
-        auctionState.auctionStartedAt = new Date();
-        await auctionState.save();
-
-        // Start timer
-        startTimer(io);
-
-        // Broadcast to all clients
-        const playerData = await Player.findById(playerId);
-        io.emit('auction:started', {
-          player: playerData,
-          basePrice: player.basePrice,
-          timerValue: timerValue
-        });
+        // Use shared function
+        await startAuctionForPlayer(io, playerId);
 
       } catch (error) {
         console.error('Start auction error:', error);
@@ -280,6 +255,67 @@ module.exports = (io) => {
       } catch (error) {
         console.error('Undo error:', error);
       }
+    });
+
+    // Start auto auction with all available players
+    socket.on('admin:startAutoAuction', async () => {
+      if (!adminSockets.has(socket.id)) {
+        return socket.emit('error', { message: 'Unauthorized' });
+      }
+
+      try {
+        // Get all available players (not sold), sorted by base price descending
+        const availablePlayers = await Player.find({ 
+          status: { $ne: 'SOLD' }
+        }).sort({ basePrice: -1 });
+
+        if (availablePlayers.length === 0) {
+          return socket.emit('error', { message: 'No players available for auction' });
+        }
+
+        // Initialize queue
+        playerQueue = availablePlayers.map(p => p._id.toString());
+        unsoldPlayers = [];
+        isAutoAuction = true;
+
+        // Broadcast queue status
+        io.to('admin').emit('autoAuction:started', {
+          totalPlayers: playerQueue.length,
+          queueLength: playerQueue.length
+        });
+
+        // Start first player auction
+        await processNextPlayerInQueue(io);
+
+      } catch (error) {
+        console.error('Auto auction start error:', error);
+        socket.emit('error', { message: 'Failed to start auto auction' });
+      }
+    });
+
+    // Stop auto auction
+    socket.on('admin:stopAutoAuction', async () => {
+      if (!adminSockets.has(socket.id)) return;
+
+      isAutoAuction = false;
+      stopTimer();
+      
+      io.to('admin').emit('autoAuction:stopped', {
+        remainingInQueue: playerQueue.length,
+        unsoldCount: unsoldPlayers.length
+      });
+    });
+
+    // Get auto auction status
+    socket.on('admin:getAutoAuctionStatus', () => {
+      if (!adminSockets.has(socket.id)) return;
+
+      socket.emit('autoAuction:status', {
+        isActive: isAutoAuction,
+        queueLength: playerQueue.length,
+        unsoldCount: unsoldPlayers.length,
+        totalRemaining: playerQueue.length + unsoldPlayers.length
+      });
     });
 
     // Handle disconnection
@@ -385,6 +421,16 @@ module.exports = (io) => {
         // No bids - mark unsold
         player.status = 'UNSOLD';
         await player.save();
+
+        // Add to unsold queue if in auto auction mode
+        if (isAutoAuction && !unsoldPlayers.includes(player._id.toString())) {
+          unsoldPlayers.push(player._id.toString());
+          io.to('admin').emit('autoAuction:playerUnsold', {
+            playerId: player._id,
+            playerName: player.name,
+            unsoldCount: unsoldPlayers.length
+          });
+        }
       }
 
       // Reset auction state
@@ -406,8 +452,104 @@ module.exports = (io) => {
       // Update team status
       broadcastTeamStatus();
 
+      // If in auto auction mode, process next player
+      if (isAutoAuction) {
+        setTimeout(async () => {
+          await processNextPlayerInQueue(io);
+        }, 2000); // 2 second delay between players
+      }
+
     } catch (error) {
       console.error('Auto-sold error:', error);
+    }
+  }
+
+  async function processNextPlayerInQueue(io) {
+    try {
+      // Check if there are players in the main queue
+      if (playerQueue.length > 0) {
+        const playerId = playerQueue.shift();
+        
+        // Broadcast queue update
+        io.to('admin').emit('autoAuction:queueUpdate', {
+          queueLength: playerQueue.length,
+          unsoldCount: unsoldPlayers.length,
+          totalRemaining: playerQueue.length + unsoldPlayers.length
+        });
+
+        // Start auction for this player
+        const player = await Player.findById(playerId);
+        if (player && player.status !== 'SOLD') {
+          await startAuctionForPlayer(io, playerId);
+        } else {
+          // Skip sold player and move to next
+          await processNextPlayerInQueue(io);
+        }
+      } 
+      // If main queue is empty but there are unsold players, add them back
+      else if (unsoldPlayers.length > 0) {
+        playerQueue = [...unsoldPlayers];
+        unsoldPlayers = [];
+        
+        io.to('admin').emit('autoAuction:unsoldRound', {
+          message: 'Starting auction for previously unsold players',
+          count: playerQueue.length
+        });
+
+        // Process first unsold player
+        await processNextPlayerInQueue(io);
+      } 
+      // Queue is completely empty
+      else {
+        isAutoAuction = false;
+        io.to('admin').emit('autoAuction:completed', {
+          message: 'All players have been auctioned'
+        });
+        io.emit('auction:allCompleted');
+      }
+    } catch (error) {
+      console.error('Queue processing error:', error);
+    }
+  }
+
+  async function startAuctionForPlayer(io, playerId) {
+    try {
+      const player = await Player.findById(playerId);
+      if (!player || player.status === 'SOLD') {
+        return;
+      }
+
+      // Update player status
+      player.status = 'IN_AUCTION';
+      await player.save();
+
+      // Get or create auction state
+      let auctionState = await AuctionState.findOne();
+      if (!auctionState) {
+        auctionState = new AuctionState();
+      }
+
+      auctionState.currentPlayer = player._id;
+      auctionState.isActive = true;
+      auctionState.isPaused = false;
+      auctionState.currentHighBid = {
+        amount: player.basePrice,
+        team: null
+      };
+      auctionState.auctionStartedAt = new Date();
+      await auctionState.save();
+
+      // Start timer
+      startTimer(io);
+
+      // Broadcast to all clients
+      io.emit('auction:started', {
+        player: player,
+        basePrice: player.basePrice,
+        timerValue: timerValue
+      });
+    } catch (error) {
+      console.error('Start auction for player error:', error);
     }
   }
 

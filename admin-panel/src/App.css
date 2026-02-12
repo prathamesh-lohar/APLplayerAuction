@@ -79,6 +79,12 @@ body {
   align-items: center;
 }
 
+.header-buttons {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
 .admin-header h1 {
   margin-bottom: 0;
   color: #667eea;
@@ -87,6 +93,20 @@ body {
 .logout-btn {
   padding: 0.5rem 1rem !important;
   font-size: 0.9rem !important;
+}
+
+.clear-data-btn {
+  padding: 0.5rem 1rem !important;
+  font-size: 0.9rem !important;
+  background: transparent !important;
+  color: #dc3545 !important;
+  border: 2px solid #dc3545 !important;
+  font-weight: 600;
+}
+
+.clear-data-btn:hover {
+  background: #dc3545 !important;
+  color: white !important;
 }
 
 .stats-bar {
@@ -172,8 +192,96 @@ body {
   color: #333;
 }
 
+.control-panel h3 {
+  margin-bottom: 1rem;
+  margin-top: 1.5rem;
+  color: #555;
+  font-size: 1.1rem;
+}
+
 .control-panel p {
   margin-bottom: 0.5rem;
+}
+
+/* Auto Auction Section */
+.auto-auction-section {
+  margin-bottom: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.auto-auction-status {
+  background: #f0f9ff;
+  padding: 1.5rem;
+  border-radius: 10px;
+  border: 2px solid #0ea5e9;
+}
+
+.status-active {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  color: #0ea5e9;
+}
+
+.status-indicator {
+  width: 12px;
+  height: 12px;
+  background: #0ea5e9;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.auto-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.auto-stat {
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.auto-stat span {
+  display: block;
+  font-size: 0.85rem;
+  color: #666;
+  margin-bottom: 0.5rem;
+}
+
+.auto-stat strong {
+  display: block;
+  font-size: 1.5rem;
+  color: #0ea5e9;
+}
+
+.auto-auction-inactive {
+  text-align: center;
+  padding: 1rem;
+}
+
+.auto-auction-inactive p {
+  margin-bottom: 1rem;
+  color: #666;
+}
+
+/* Manual Auction Section */
+.manual-auction-section {
+  margin-top: 1.5rem;
 }
 
 .control-buttons {

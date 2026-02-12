@@ -24,10 +24,11 @@ const upload = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
+    // Allow images for photo uploads and CSV for bulk upload
+    if (file.mimetype.startsWith('image/') || file.mimetype === 'text/csv' || file.originalname.endsWith('.csv')) {
       cb(null, true);
     } else {
-      cb(new Error('Only image files are allowed'));
+      cb(new Error('Only image and CSV files are allowed'));
     }
   }
 });
@@ -166,27 +167,69 @@ router.delete('/:id', async (req, res) => {
 // Bulk upload via CSV
 router.post('/bulk-upload', upload.single('csvFile'), async (req, res) => {
   try {
+    console.log('CSV Upload - File received:', req.file);
+    
     if (!req.file) {
       return res.status(400).json({ success: false, message: 'No file uploaded' });
     }
 
     const players = [];
     const filePath = req.file.path;
+    console.log('CSV Upload - Reading file:', filePath);
+
+    // Helper function to normalize category
+    const normalizeCategory = (category) => {
+      const normalized = category.trim();
+      // Map common variations to valid enum values
+      const categoryMap = {
+        'batsman': 'Batsman',
+        'batter': 'Batsman',
+        'bowler': 'Bowler',
+        'all-rounder': 'All-Rounder',
+        'allrounder': 'All-Rounder',
+        'wicket-keeper': 'Wicket-Keeper',
+        'wicketkeeper': 'Wicket-Keeper',
+        'keeper': 'Wicket-Keeper'
+      };
+      
+      const lowerCategory = normalized.toLowerCase();
+      return categoryMap[lowerCategory] || normalized;
+    };
 
     // Parse CSV
     fs.createReadStream(filePath)
       .pipe(csv())
       .on('data', (row) => {
+        console.log('CSV Upload - Row parsed:', row);
+        
+        const category = row.category || row.Category;
+        const normalizedCategory = normalizeCategory(category);
+        
+        // Skip rows with invalid categories like #N/A
+        if (normalizedCategory === '#N/A' || !normalizedCategory) {
+          console.log('CSV Upload - Skipping row with invalid category:', row.name);
+          return;
+        }
+        
         players.push({
           name: row.name || row.Name,
-          category: row.category || row.Category,
+          category: normalizedCategory,
           photo: row.photo || row.Photo || '/placeholder-player.jpg',
           basePrice: parseInt(row.basePrice || row['Base Price']) || 5
         });
       })
       .on('end', async () => {
         try {
+          console.log('CSV Upload - Total players parsed:', players.length);
+          
+          if (players.length === 0) {
+            fs.unlinkSync(filePath);
+            return res.status(400).json({ success: false, message: 'No valid players found in CSV' });
+          }
+
+          console.log('CSV Upload - Inserting players:', players.length);
           const insertedPlayers = await Player.insertMany(players);
+          console.log('CSV Upload - Success:', insertedPlayers.length);
           
           // Delete uploaded file
           fs.unlinkSync(filePath);
@@ -197,11 +240,25 @@ router.post('/bulk-upload', upload.single('csvFile'), async (req, res) => {
             players: insertedPlayers 
           });
         } catch (error) {
+          console.error('CSV Upload - Database error:', error);
+          // Clean up file on error
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          }
           res.status(400).json({ success: false, message: error.message });
         }
+      })
+      .on('error', (error) => {
+        console.error('CSV Upload - Parsing error:', error);
+        // Clean up file on parsing error
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+        res.status(400).json({ success: false, message: 'CSV parsing error: ' + error.message });
       });
 
   } catch (error) {
+    console.error('CSV Upload - Server error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });

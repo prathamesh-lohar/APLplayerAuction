@@ -6,6 +6,9 @@ import './App.css';
 const SOCKET_URL = 'http://localhost:5001';
 const API_URL = 'http://localhost:5001/api';
 
+// Default placeholder image (SVG data URL)
+const PLACEHOLDER_IMAGE = `${SOCKET_URL}/uploads/wwplaceholder.jpg`;
+
 function App() {
   const [socket, setSocket] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -17,6 +20,14 @@ function App() {
   const [teams, setTeams] = useState([]);
   const [auctionState, setAuctionState] = useState(null);
   const [selectedPlayer, setSelectedPlayer] = useState(null);
+  
+  // Auto auction state
+  const [autoAuctionStatus, setAutoAuctionStatus] = useState({
+    isActive: false,
+    queueLength: 0,
+    unsoldCount: 0,
+    totalRemaining: 0
+  });
   
   // Stats
   const [stats, setStats] = useState({ totalPlayers: 0, soldPlayers: 0, unsoldPlayers: 0 });
@@ -64,6 +75,60 @@ function App() {
       setTeams(data.teams);
     });
 
+    // Auto auction events
+    newSocket.on('autoAuction:started', (data) => {
+      setAutoAuctionStatus(prev => ({
+        ...prev,
+        isActive: true,
+        queueLength: data.queueLength,
+        totalRemaining: data.totalPlayers
+      }));
+    });
+
+    newSocket.on('autoAuction:queueUpdate', (data) => {
+      setAutoAuctionStatus(prev => ({
+        ...prev,
+        queueLength: data.queueLength,
+        unsoldCount: data.unsoldCount,
+        totalRemaining: data.totalRemaining
+      }));
+    });
+
+    newSocket.on('autoAuction:playerUnsold', (data) => {
+      setAutoAuctionStatus(prev => ({
+        ...prev,
+        unsoldCount: data.unsoldCount
+      }));
+    });
+
+    newSocket.on('autoAuction:unsoldRound', (data) => {
+      alert(data.message + ' (' + data.count + ' players)');
+    });
+
+    newSocket.on('autoAuction:completed', (data) => {
+      alert(data.message);
+      setAutoAuctionStatus({
+        isActive: false,
+        queueLength: 0,
+        unsoldCount: 0,
+        totalRemaining: 0
+      });
+      loadData();
+    });
+
+    newSocket.on('autoAuction:stopped', (data) => {
+      setAutoAuctionStatus({
+        isActive: false,
+        queueLength: data.remainingInQueue,
+        unsoldCount: data.unsoldCount,
+        totalRemaining: data.remainingInQueue + data.unsoldCount
+      });
+    });
+
+    newSocket.on('autoAuction:status', (data) => {
+      setAutoAuctionStatus(data);
+    });
+
     return () => newSocket.close();
   }, []);
 
@@ -101,6 +166,32 @@ function App() {
     window.location.reload();
   };
 
+  const handleClearAllData = async () => {
+    const confirmMessage = 'Are you sure you want to clear ALL data?\n\nThis will delete:\n- All players\n- All teams\n- All bids\n- Auction state\n\nThis action CANNOT be undone!';
+    
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    // Double confirmation for safety
+    const secondConfirm = window.confirm('FINAL WARNING: This will permanently delete everything. Continue?');
+    if (!secondConfirm) {
+      return;
+    }
+
+    try {
+      const response = await axios.post(`${API_URL}/admin/clear-all-data`);
+      if (response.data.success) {
+        alert('All data cleared successfully!');
+        // Reload data
+        loadData();
+      }
+    } catch (error) {
+      console.error('Clear data error:', error);
+      alert('Failed to clear data: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
   const startAuction = (playerId) => {
     if (socket) {
       socket.emit('admin:startAuction', { playerId });
@@ -119,6 +210,28 @@ function App() {
   const undoSale = (playerId) => {
     if (window.confirm('Are you sure you want to undo this sale?')) {
       if (socket) socket.emit('admin:undoSale', { playerId });
+    }
+  };
+
+  const startAutoAuction = () => {
+    if (window.confirm('Start automatic auction for all available players?\n\nPlayers will be auctioned from highest to lowest base price.\nUnsold players will be added back to the queue.')) {
+      if (socket) {
+        socket.emit('admin:startAutoAuction');
+      }
+    }
+  };
+
+  const stopAutoAuction = () => {
+    if (window.confirm('Stop automatic auction?')) {
+      if (socket) {
+        socket.emit('admin:stopAutoAuction');
+      }
+    }
+  };
+
+  const getAutoAuctionStatus = () => {
+    if (socket) {
+      socket.emit('admin:getAutoAuctionStatus');
     }
   };
 
@@ -274,9 +387,14 @@ function App() {
       <div className="admin-header">
         <div className="admin-header-content">
           <h1>🏏 Cricket Auction - Admin Panel</h1>
-          <button onClick={handleLogout} className="btn-danger logout-btn">
-            Logout
-          </button>
+          <div className="header-buttons">
+            <button onClick={handleClearAllData} className="btn-danger-outline clear-data-btn" title="Clear all data">
+              🗑️ Clear All Data
+            </button>
+            <button onClick={handleLogout} className="btn-danger logout-btn">
+              Logout
+            </button>
+          </div>
         </div>
         <div className="stats-bar">
           <div className="stat-item">
@@ -330,36 +448,80 @@ function App() {
           <div className="auction-control">
             <div className="control-panel">
               <h2>Auction Controls</h2>
-              {auctionState?.isActive ? (
-                <div>
-                  <p><strong>Status:</strong> {auctionState.isPaused ? 'PAUSED' : 'ACTIVE'}</p>
-                  <p><strong>Current Player:</strong> {auctionState.currentPlayer?.name || 'None'}</p>
-                  <p><strong>Current Bid:</strong> ₹{auctionState.currentHighBid?.amount || 0}</p>
-                  <div className="control-buttons">
-                    {auctionState.isPaused ? (
-                      <button onClick={resumeAuction} className="btn-success">Resume</button>
-                    ) : (
-                      <button onClick={pauseAuction} className="btn-warning">Pause</button>
-                    )}
+              
+              {/* Auto Auction Controls */}
+              <div className="auto-auction-section">
+                <h3>Auto Auction</h3>
+                {autoAuctionStatus.isActive ? (
+                  <div className="auto-auction-status">
+                    <div className="status-active">
+                      <span className="status-indicator"></span>
+                      <strong>Auto Auction Active</strong>
+                    </div>
+                    <div className="auto-stats">
+                      <div className="auto-stat">
+                        <span>Remaining in Queue</span>
+                        <strong>{autoAuctionStatus.queueLength}</strong>
+                      </div>
+                      <div className="auto-stat">
+                        <span>Unsold (Will Retry)</span>
+                        <strong>{autoAuctionStatus.unsoldCount}</strong>
+                      </div>
+                      <div className="auto-stat">
+                        <span>Total Remaining</span>
+                        <strong>{autoAuctionStatus.totalRemaining}</strong>
+                      </div>
+                    </div>
+                    <button onClick={stopAutoAuction} className="btn-danger">
+                      Stop Auto Auction
+                    </button>
                   </div>
-                </div>
-              ) : (
-                <p>No active auction</p>
-              )}
+                ) : (
+                  <div className="auto-auction-inactive">
+                    <p>Start automatic auction for all players. Players will be auctioned from highest to lowest base price. Unsold players will be added back to the queue.</p>
+                    <button onClick={startAutoAuction} className="btn-success">
+                      🚀 Start Auto Auction
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Manual Auction Controls */}
+              <div className="manual-auction-section">
+                <h3>Manual Auction</h3>
+                {auctionState?.isActive ? (
+                  <div>
+                    <p><strong>Status:</strong> {auctionState.isPaused ? 'PAUSED' : 'ACTIVE'}</p>
+                    <p><strong>Current Player:</strong> {auctionState.currentPlayer?.name || 'None'}</p>
+                    <p><strong>Current Bid:</strong> ₹{auctionState.currentHighBid?.amount || 0}</p>
+                    <div className="control-buttons">
+                      {auctionState.isPaused ? (
+                        <button onClick={resumeAuction} className="btn-success">Resume</button>
+                      ) : (
+                        <button onClick={pauseAuction} className="btn-warning">Pause</button>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <p>No active auction</p>
+                )}
+              </div>
             </div>
 
             <div className="player-selector">
-              <h2>Start Auction</h2>
+              <h2>Start Manual Auction</h2>
               <div className="player-grid">
                 {players.filter(p => p.status === 'UNSOLD').map(player => (
                   <div key={player._id} className="player-item">
-                    <img src={player.photo?.startsWith('http') ? player.photo : `${API_URL}${player.photo}`} alt={player.name} onError={(e) => e.target.src = '/placeholder-player.jpg'} />
+                    {/* console.log player */}
+
+                    <img src={player.photo?.startsWith('http') ? player.photo : `${SOCKET_URL}/uploads${player.photo}`} alt={player.name} onError={(e) => e.target.src = PLACEHOLDER_IMAGE} />
                     <div className="player-details">
                       <strong>{player.name}</strong>
                       <span>{player.category}</span>
                       <span>Base: ₹{player.basePrice}</span>
                     </div>
-                    <button onClick={() => startAuction(player._id)} className="btn-primary">
+                    <button onClick={() => startAuction(player._id)} className="btn-primary" disabled={autoAuctionStatus.isActive}>
                       Start
                     </button>
                   </div>

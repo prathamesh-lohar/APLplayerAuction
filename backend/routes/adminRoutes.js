@@ -208,4 +208,36 @@ router.put('/teams/:id', async (req, res) => {
   }
 });
 
+// Clear all data
+router.post('/clear-all-data', async (req, res) => {
+  try {
+    // Delete all records from all collections
+    await Promise.all([
+      Player.deleteMany({}),
+      Team.deleteMany({}),
+      Bid.deleteMany({}),
+      AuctionState.deleteMany({})
+    ]);
+
+    // Reinitialize auction state
+    await AuctionState.create({
+      currentPlayer: null,
+      currentBid: null,
+      isActive: false,
+      timerValue: parseInt(process.env.TIMER_DURATION) || 20
+    });
+
+    res.json({ 
+      success: true, 
+      message: 'All data cleared successfully. Players, teams, bids, and auction state have been reset.' 
+    });
+  } catch (error) {
+    console.error('Clear data error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to clear data: ' + error.message 
+    });
+  }
+});
+
 module.exports = router;

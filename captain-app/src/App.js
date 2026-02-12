@@ -5,6 +5,8 @@ import './App.css';
 const SOCKET_URL = 'http://localhost:5001';
 const API_URL = 'http://localhost:5001';
 
+// Default placeholder image (SVG data URL)
+const PLACEHOLDER_IMAGE = `${SOCKET_URL}/uploads/placeholder.jpg`;
 function App() {
   const [socket, setSocket] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -154,6 +156,8 @@ function App() {
     return nextBid <= teamData.maxBid && nextBid <= teamData.remainingPoints;
   };
 
+  const isHighestBidder = currentBid.teamName === teamData?.teamName;
+
   if (!isAuthenticated) {
     return (
       <div className="app">
@@ -248,7 +252,7 @@ function App() {
                 src={currentPlayer.photo?.startsWith('http') ? currentPlayer.photo : `${API_URL}${currentPlayer.photo}`} 
                 alt={currentPlayer.name}
                 className="player-photo-mobile"
-                onError={(e) => e.target.src = '/placeholder-player.jpg'}
+                onError={(e) => e.target.src = PLACEHOLDER_IMAGE}
               />
               <div className="player-info-mobile">
                 <h4>{currentPlayer.name}</h4>
@@ -273,7 +277,12 @@ function App() {
 
             {/* Bid Button */}
             <div className="bid-controls">
-              {canBid(5) || canBid(10) ? (
+              {isHighestBidder ? (
+                <div className="cannot-bid">
+                  <p>✓ You're the Highest Bidder</p>
+                  <small>Wait for other teams to bid</small>
+                </div>
+              ) : canBid(5) || canBid(10) ? (
                 <div className="bid-buttons-group">
                   <button 
                     className={`bid-button ${bidSuccess ? 'bid-success' : ''}`}
