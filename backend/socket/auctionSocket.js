@@ -144,6 +144,10 @@ module.exports = (io) => {
           });
         }
 
+        if(auctionState.currentHighBid < amount){
+          return socket.emit();
+        }
+
         // Record bid
         const bid = new Bid({
           player: player._id,
