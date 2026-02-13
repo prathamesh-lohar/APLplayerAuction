@@ -7,6 +7,7 @@ let auctionTimer = null;
 let timerValue = parseInt(process.env.TIMER_DURATION) || 20;
 let playerQueue = [];
 let isAutoAuction = false;
+let isAutoAuctionPaused = false;
 let unsoldPlayers = [];
 
 module.exports = (io) => {
@@ -309,6 +310,7 @@ module.exports = (io) => {
       if (!adminSockets.has(socket.id)) return;
 
       isAutoAuction = false;
+      isAutoAuctionPaused = false;
       stopTimer();
       
       io.to('admin').emit('autoAuction:stopped', {
@@ -317,12 +319,72 @@ module.exports = (io) => {
       });
     });
 
+    // Pause auto auction
+    socket.on('admin:pauseAutoAuction', async () => {
+      if (!adminSockets.has(socket.id)) return;
+
+      if (isAutoAuction && !isAutoAuctionPaused) {
+        isAutoAuctionPaused = true;
+        stopTimer();
+        
+        // Also pause the current auction
+        try {
+          const auctionState = await AuctionState.findOne();
+          if (auctionState && auctionState.isActive) {
+            auctionState.isPaused = true;
+            await auctionState.save();
+            io.emit('auction:paused');
+          }
+        } catch (error) {
+          console.error('Pause error:', error);
+        }
+
+        io.to('admin').emit('autoAuction:paused', {
+          queueLength: playerQueue.length,
+          unsoldCount: unsoldPlayers.length,
+          totalRemaining: playerQueue.length + unsoldPlayers.length
+        });
+      }
+    });
+
+    // Resume auto auction
+    socket.on('admin:resumeAutoAuction', async () => {
+      if (!adminSockets.has(socket.id)) return;
+
+      if (isAutoAuction && isAutoAuctionPaused) {
+        isAutoAuctionPaused = false;
+        
+        // Resume the current auction
+        try {
+          const auctionState = await AuctionState.findOne();
+          if (auctionState && auctionState.isActive && auctionState.isPaused) {
+            auctionState.isPaused = false;
+            await auctionState.save();
+            startTimer(io);
+            io.emit('auction:resumed');
+          } else if (!auctionState || !auctionState.isActive) {
+            // No active auction, process next player
+            await processNextPlayerInQueue(io);
+          }
+        } catch (error) {
+          console.error('Resume error:', error);
+        }
+
+        io.to('admin').emit('autoAuction:resumed', {
+          queueLength: playerQueue.length,
+          unsoldCount: unsoldPlayers.length,
+          totalRemaining: playerQueue.length + unsoldPlayers.length
+        });
+      }
+    });
+
     // Get auto auction status
     socket.on('admin:getAutoAuctionStatus', () => {
       if (!adminSockets.has(socket.id)) return;
 
       socket.emit('autoAuction:status', {
         isActive: isAutoAuction,
+        isPaused: isAutoAuctionPaused,
         queueLength: playerQueue.length,
         unsoldCount: unsoldPlayers.length,
         totalRemaining: playerQueue.length + unsoldPlayers.length
@@ -468,7 +530,7 @@ module.exports = (io) => {
       broadcastTeamStatus();
 
       // If in auto auction mode, process next player
-      if (isAutoAuction) {
+      if (isAutoAuction && !isAutoAuctionPaused) {
         setTimeout(async () => {
           await processNextPlayerInQueue(io);
         }, 2000); // 2 second delay between players
