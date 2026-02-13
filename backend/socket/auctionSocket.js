@@ -151,8 +151,8 @@ module.exports = (io) => {
           isWinning: false
         });
         auctionState = await AuctionState.findOne();
-        if(auctionState.currentHighBid < amount){
-          return socket.emit();
+        if(auctionState.currentHighBid.amount > amount){
+          return socket.emit('bid:error', { message: 'Bid must be higher than current high bid' });
         }
 
         // Record bid
