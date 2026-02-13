@@ -7,7 +7,7 @@ const SOCKET_URL = 'https://aplplayerauction.onrender.com/';
 const API_URL = 'https://aplplayerauction.onrender.com/api';
 
 // Default placeholder image (SVG data URL)
-const PLACEHOLDER_IMAGE = `${SOCKET_URL}/uploads/wwplaceholder.jpg`;
+const PLACEHOLDER_IMAGE = `${SOCKET_URL}uploads/placeholder.jpg`;
 
 function App() {
   const [socket, setSocket] = useState(null);
@@ -23,6 +23,7 @@ function App() {
   // Auto auction state
   const [autoAuctionStatus, setAutoAuctionStatus] = useState({
     isActive: false,
+    isPaused: false,
     queueLength: 0,
     unsoldCount: 0,
     totalRemaining: 0
@@ -94,6 +95,16 @@ function App() {
       setAuctionState(data.state);
     });
 
+    // Listen for auction paused
+    newSocket.on('auction:paused', () => {
+      setAuctionState(prev => prev ? { ...prev, isPaused: true } : prev);
+    });
+
+    // Listen for auction resumed
+    newSocket.on('auction:resumed', () => {
+      setAuctionState(prev => prev ? { ...prev, isPaused: false } : prev);
+    });
+
     newSocket.on('teams:status', (data) => {
       setTeams(data.teams);
     });
@@ -128,6 +139,7 @@ function App() {
       setAutoAuctionStatus(prev => ({
         ...prev,
         isActive: true,
+        isPaused: false,
         queueLength: data.queueLength,
         totalRemaining: data.totalPlayers
       }));
@@ -157,6 +169,7 @@ function App() {
       alert(data.message);
       setAutoAuctionStatus({
         isActive: false,
+        isPaused: false,
         queueLength: 0,
         unsoldCount: 0,
         totalRemaining: 0
@@ -167,10 +180,31 @@ function App() {
     newSocket.on('autoAuction:stopped', (data) => {
       setAutoAuctionStatus({
         isActive: false,
+        isPaused: false,
         queueLength: data.remainingInQueue,
         unsoldCount: data.unsoldCount,
         totalRemaining: data.remainingInQueue + data.unsoldCount
       });
+    });
+
+    newSocket.on('autoAuction:paused', (data) => {
+      setAutoAuctionStatus(prev => ({
+        ...prev,
+        isPaused: true,
+        queueLength: data.queueLength,
+        unsoldCount: data.unsoldCount,
+        totalRemaining: data.totalRemaining
+      }));
+    });
+
+    newSocket.on('autoAuction:resumed', (data) => {
+      setAutoAuctionStatus(prev => ({
+        ...prev,
+        isPaused: false,
+        queueLength: data.queueLength,
+        unsoldCount: data.unsoldCount,
+        totalRemaining: data.totalRemaining
+      }));
     });
 
     newSocket.on('autoAuction:status', (data) => {
@@ -283,6 +317,18 @@ function App() {
       if (socket) {
         socket.emit('admin:stopAutoAuction');
       }
+    }
+  };
+
+  const pauseAutoAuction = () => {
+    if (socket) {
+      socket.emit('admin:pauseAutoAuction');
+    }
+  };
+
+  const resumeAutoAuction = () => {
+    if (socket) {
+      socket.emit('admin:resumeAutoAuction');
     }
   };
 
@@ -507,7 +553,7 @@ function App() {
                   <div className="auto-auction-status">
                     <div className="status-active">
                       <span className="status-indicator"></span>
-                      <strong>Auto Auction Active</strong>
+                      <strong>Auto Auction {autoAuctionStatus.isPaused ? 'PAUSED' : 'Active'}</strong>
                     </div>
                     <div className="auto-stats">
                       <div className="auto-stat">
@@ -523,9 +569,20 @@ function App() {
                         <strong>{autoAuctionStatus.totalRemaining}</strong>
                       </div>
                     </div>
-                    <button onClick={stopAutoAuction} className="btn-danger">
-                      Stop Auto Auction
-                    </button>
+                    <div className="control-buttons">
+                      {autoAuctionStatus.isPaused ? (
+                        <button onClick={resumeAutoAuction} className="btn-success">
+                          ▶️ Resume Auto Auction
+                        </button>
+                      ) : (
+                        <button onClick={pauseAutoAuction} className="btn-warning">
+                          ⏸️ Pause Auto Auction
+                        </button>
+                      )}
+                      <button onClick={stopAutoAuction} className="btn-danger">
+                        ⏹️ Stop Auto Auction
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <div className="auto-auction-inactive">
@@ -566,7 +623,7 @@ function App() {
                   <div key={player._id} className="player-item">
                     {/* console.log player */}
 
-                    <img src={player.photo?.startsWith('http') ? player.photo : `${SOCKET_URL}/uploads${player.photo}`} alt={player.name} onError={(e) => e.target.src = PLACEHOLDER_IMAGE} />
+                    <img src={player.photo?.startsWith('http') ? player.photo : `${SOCKET_URL}uploads${player.photo}`} alt={player.name} onError={(e) => e.target.src = PLACEHOLDER_IMAGE} />
                     <div className="player-details">
                       <strong>{player.name}</strong>
                       <span>{player.category}</span>
