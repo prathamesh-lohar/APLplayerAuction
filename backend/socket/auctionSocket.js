@@ -144,17 +144,18 @@ module.exports = (io) => {
           });
         }
 
-        if(auctionState.currentHighBid < amount){
-          return socket.emit();
-        }
-
-        // Record bid
         const bid = new Bid({
           player: player._id,
           team: team._id,
           amount: amount,
           isWinning: false
         });
+        auctionState = await AuctionState.findOne();
+        if(auctionState.currentHighBid < amount){
+          return socket.emit();
+        }
+
+        // Record bid
         await bid.save();
 
         // Update auction state
