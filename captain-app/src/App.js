@@ -90,7 +90,7 @@ function App() {
             remainingPoints: prev.remainingPoints - data.amount,
             rosterSlotsFilled: prev.rosterSlotsFilled + 1,
             players: [...prev.players, data.player],
-            maxBid: prev.remainingPoints - data.amount - ((14 - (prev.rosterSlotsFilled + 1)) * 30)
+            maxBid: prev.remainingPoints - data.amount - ((14 - (prev.rosterSlotsFilled)) * 30)
           };
         }
         return prev;

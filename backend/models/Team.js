@@ -65,7 +65,7 @@ teamSchema.methods.comparePin = async function(candidatePin) {
 teamSchema.methods.getMaxBid = function() {
   const remainingSlots = 14 - this.rosterSlotsFilled;
   if (remainingSlots <= 0) return 0;
-  return this.remainingPoints - (remainingSlots * 30);
+  return this.remainingPoints - ((remainingSlots - 1) * 30);
 };
 
 module.exports = mongoose.model('Team', teamSchema);
