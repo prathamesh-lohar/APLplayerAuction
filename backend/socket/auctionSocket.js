@@ -276,17 +276,24 @@ module.exports = (io) => {
       }
 
       try {
-        // Get all available players (not sold), sorted by base price descending
+        // Get all available players (not sold)
         const availablePlayers = await Player.find({ 
           status: { $ne: 'SOLD' }
-        }).sort({ basePrice: -1 });
+        });
 
         if (availablePlayers.length === 0) {
           return socket.emit('error', { message: 'No players available for auction' });
         }
 
-        // Initialize queue
-        playerQueue = availablePlayers.map(p => p._id.toString());
+        // Shuffle players randomly using Fisher-Yates algorithm
+        const shuffledPlayers = [...availablePlayers];
+        for (let i = shuffledPlayers.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffledPlayers[i], shuffledPlayers[j]] = [shuffledPlayers[j], shuffledPlayers[i]];
+        }
+
+        // Initialize queue with shuffled players
+        playerQueue = shuffledPlayers.map(p => p._id.toString());
         unsoldPlayers = [];
         isAutoAuction = true;
 
