@@ -336,7 +336,7 @@ module.exports = (io) => {
   // Timer functions
   function startTimer(io) {
     stopTimer(); // Clear any existing timer
-    timerValue = parseInt(process.env.TIMER_DURATION) || 20;
+    timerValue = parseInt(process.env.TIMER_DURATION) || 10;
 
     auctionTimer = setInterval(async () => {
       timerValue--;
@@ -359,7 +359,7 @@ module.exports = (io) => {
   }
 
   function resetTimer(io) {
-    timerValue = parseInt(process.env.TIMER_DURATION) || 20;
+    timerValue = parseInt(process.env.TIMER_DURATION) ||10;
     io.emit('timer:reset', { value: timerValue });
   }
 
