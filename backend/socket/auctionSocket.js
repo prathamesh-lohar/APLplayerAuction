@@ -144,27 +144,41 @@ module.exports = (io) => {
           });
         }
 
+        // Atomically update auction state if this bid is still higher than current high bid
+        const updatedAuctionState = await AuctionState.findOneAndUpdate(
+          {
+            _id: auctionState._id,
+            'currentHighBid.amount': { $lt: amount }
+          },
+          {
+            $set: {
+              currentHighBid: {
+                amount: amount,
+                team: team._id
+              },
+              lastBidAt: new Date()
+            }
+          },
+          { new: true }
+        );
+
+        if (!updatedAuctionState) {
+          return socket.emit('bid:error', { message: 'Bid must be higher than current high bid' });
+        }
+
         const bid = new Bid({
           player: player._id,
           team: team._id,
           amount: amount,
           isWinning: false
         });
-        auctionState = await AuctionState.findOne();
-        if(auctionState.currentHighBid.amount > amount){
-          return socket.emit('bid:error', { message: 'Bid must be higher than current high bid' });
-        }
-
-        // Record bid
+        
+        // Record bid after successful atomic state update
         await bid.save();
 
-        // Update auction state
-        auctionState.currentHighBid = {
-          amount: amount,
-          team: team._id
-        };
-        auctionState.lastBidAt = new Date();
-        await auctionState.save();
+        // Keep in-memory auctionState in sync with database
+        auctionState.currentHighBid = updatedAuctionState.currentHighBid;
+        auctionState.lastBidAt = updatedAuctionState.lastBidAt;
 
         // Reset timer
         resetTimer(io);
