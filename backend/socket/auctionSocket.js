@@ -12,8 +12,30 @@ module.exports = (io) => {
   const adminSockets = new Set();
   const bigScreenSockets = new Set();
 
+  // Connection error handling
+  io.engine.on('connection_error', (err) => {
+    console.error('Socket.IO connection error:', err);
+  });
+
   io.on('connection', (socket) => {
-    console.log(`Client connected: ${socket.id}`);
+    console.log(`Client connected: ${socket.id} (transport: ${socket.conn.transport.name})`);
+
+    // Handle connection errors
+    socket.on('error', (error) => {
+      console.error(`Socket ${socket.id} error:`, error);
+    });
+
+    socket.conn.on('packet', (packet) => {
+      if (packet.type === 'ping') {
+        console.log(`Ping from ${socket.id}`);
+      }
+    });
+
+    socket.conn.on('packetCreate', (packet) => {
+      if (packet.type === 'pong') {
+        console.log(`Pong to ${socket.id}`);
+      }
+    });
 
     // Handle team login
     socket.on('team:login', async ({ teamId, pin }) => {

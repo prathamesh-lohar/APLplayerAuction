@@ -43,40 +43,59 @@ function App() {
 
   useEffect(() => {
     const newSocket = io(SOCKET_URL, {
+      transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,
-      reconnectionAttempts: 10
+      reconnectionDelayMax: 5000,
+      reconnectionAttempts: 10,
+      timeout: 20000,
+      autoConnect: true,
+      forceNew: false
     });
     setSocket(newSocket);
 
     // Check for saved admin session
     const savedAdminAuth = localStorage.getItem('admin_authenticated');
     const savedPassword = localStorage.getItem('admin_password');
-    
-    if (savedAdminAuth === 'true' && savedPassword) {
-      setPassword(savedPassword);
-      // Auto-login with saved credentials
-      newSocket.emit('admin:login', { password: savedPassword });
-    }
 
     // Handle connection events
     newSocket.on('connect', () => {
-      console.log('Admin panel connected');
+      console.log('Admin panel connected', {
+        id: newSocket.id,
+        transport: newSocket.io.engine.transport.name
+      });
       if (savedAdminAuth === 'true' && savedPassword) {
+        setPassword(savedPassword);
         newSocket.emit('admin:login', { password: savedPassword });
       }
     });
 
-    newSocket.on('disconnect', () => {
-      console.log('Admin panel disconnected');
+    newSocket.on('disconnect', (reason) => {
+      console.log('Admin panel disconnected:', reason);
     });
 
-    newSocket.on('reconnect', () => {
-      console.log('Admin panel reconnected');
+    newSocket.on('connect_error', (error) => {
+      console.error('Connection error:', error.message);
+    });
+
+    newSocket.on('reconnect', (attemptNumber) => {
+      console.log('Admin panel reconnected after', attemptNumber, 'attempts');
       if (savedAdminAuth === 'true' && savedPassword) {
         newSocket.emit('admin:login', { password: savedPassword });
       }
       loadData(); // Reload data on reconnection
+    });
+
+    newSocket.on('reconnect_attempt', (attemptNumber) => {
+      console.log('Reconnection attempt', attemptNumber);
+    });
+
+    newSocket.on('reconnect_error', (error) => {
+      console.error('Reconnection error:', error.message);
+    });
+
+    newSocket.on('reconnect_failed', () => {
+      console.error('Reconnection failed after all attempts');
     });
 
     newSocket.on('auth:success', () => {
@@ -89,6 +108,10 @@ function App() {
       // Clear invalid session
       localStorage.removeItem('admin_authenticated');
       localStorage.removeItem('admin_password');
+    });
+
+    newSocket.on('error', (error) => {
+      console.error('Socket error:', error);
     });
 
     newSocket.on('auction:state', (data) => {
