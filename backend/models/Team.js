@@ -22,6 +22,10 @@ const teamSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  logo: {
+    type: String,
+    default: null
+  },
   remainingPoints: {
     type: Number,
     required: true,
@@ -31,7 +35,7 @@ const teamSchema = new mongoose.Schema({
     type: Number,
     default: 0,
     min: 0,
-    max: 14
+    max: 11
   },
   players: [{
     type: mongoose.Schema.Types.ObjectId,
@@ -59,13 +63,6 @@ teamSchema.pre('save', async function(next) {
 // Method to compare PIN
 teamSchema.methods.comparePin = async function(candidatePin) {
   return await bcrypt.compare(candidatePin, this.pin);
-};
-
-// Method to calculate max bid
-teamSchema.methods.getMaxBid = function() {
-  const remainingSlots = 14 - this.rosterSlotsFilled;
-  if (remainingSlots <= 0) return 0;
-  return this.remainingPoints - ((remainingSlots - 1) * 30);
 };
 
 module.exports = mongoose.model('Team', teamSchema);

@@ -1,17 +1,57 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const Team = require('../models/Team');
 const Player = require('../models/Player');
 const Bid = require('../models/Bid');
 const AuctionState = require('../models/AuctionState');
 
-// Create single team/captain
-router.post('/create-captain', async (req, res) => {
+// Configure multer for team logo uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(__dirname, '../uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    cb(null, 'team-' + Date.now() + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage,
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB limit
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  }
+});
+
+// Create single team/captain with logo upload
+router.post('/create-captain', upload.single('logo'), async (req, res) => {
   try {
-    const { teamName, captainName, teamId, pin } = req.body;
+    // Log received data for debugging
+    console.log('Received body:', req.body);
+    console.log('Received file:', req.file);
+    
+    // Trim and extract fields from FormData
+    const teamName = req.body.teamName?.trim();
+    const captainName = req.body.captainName?.trim();
+    const teamId = req.body.teamId?.trim();
+    const pin = req.body.pin?.trim();
+    
+    console.log('Parsed fields:', { teamName, captainName, teamId, pin });
     
     // Validate required fields
     if (!teamName || !captainName || !teamId || !pin) {
+      console.log('Validation failed - missing fields');
       return res.status(400).json({ 
         success: false, 
         message: 'All fields are required: teamName, captainName, teamId, pin' 
@@ -27,18 +67,24 @@ router.post('/create-captain', async (req, res) => {
       });
     }
 
+    // Get logo path
+    const logoPath = req.file ? `/uploads/${req.file.filename}` : null;
+
     // Create new team
     const newTeam = new Team({
       teamName,
       captainName,
       teamId,
       pin, // Will be hashed by pre-save middleware
-      remainingPoints: parseInt(process.env.INITIAL_BUDGET) || 110,
+      logo: logoPath,
+      remainingPoints: Number.parseInt(process.env.INITIAL_BUDGET) || 110,
       rosterSlotsFilled: 0,
       players: []
     });
 
     await newTeam.save();
+
+    console.log('Team created successfully:', newTeam.teamId);
 
     res.json({ 
       success: true, 
@@ -52,6 +98,7 @@ router.post('/create-captain', async (req, res) => {
       }
     });
   } catch (error) {
+    console.error('Error creating captain:', error);
     res.status(400).json({ success: false, message: error.message });
   }
 });
@@ -71,7 +118,7 @@ router.post('/generate-teams', async (req, res) => {
         captainName: `Captain ${teamNumber}`,
         teamId: `${prefix}${teamNumber}`,
         pin: pin,
-        remainingPoints: parseInt(process.env.INITIAL_BUDGET) || 110,
+        remainingPoints: Number.parseInt(process.env.INITIAL_BUDGET) || 110,
         rosterSlotsFilled: 0,
         players: []
       });
@@ -116,7 +163,7 @@ router.post('/reset', async (req, res) => {
     await Team.updateMany(
       {},
       {
-        remainingPoints: parseInt(process.env.INITIAL_BUDGET) || 110,
+        remainingPoints: Number.parseInt(process.env.INITIAL_BUDGET) || 110,
         rosterSlotsFilled: 0,
         players: [],
         isOnline: false
@@ -224,7 +271,7 @@ router.post('/clear-all-data', async (req, res) => {
       currentPlayer: null,
       currentBid: null,
       isActive: false,
-      timerValue: parseInt(process.env.TIMER_DURATION) || 20
+      timerValue: Number.parseInt(process.env.TIMER_DURATION) || 20
     });
 
     res.json({ 
