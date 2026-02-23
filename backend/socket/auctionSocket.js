@@ -534,8 +534,8 @@ module.exports = (io) => {
   function resetTimer(io) {
     // Reset timer to 10 seconds on every new bid if the current time is less than 10 seconds
     // If timer is already > 10 seconds, keep the current value
-    if (timerValue <= 10) {
-      timerValue = 10;
+    if (timerValue <= 20) {
+      timerValue = 20;
     }
     // Emit single timer reset event with the final value
     io.emit('timer:reset', { value: timerValue });
