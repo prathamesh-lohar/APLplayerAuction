@@ -1,0 +1,380 @@
+const express = require('express');
+const router = express.Router();
+const Team = require('../models/Team');
+const Player = require('../models/Player');
+const Bid = require('../models/Bid');
+const AuctionState = require('../models/AuctionState');
+const { uploadTeamLogo, uploadToCloudinary } = require('../config/cloudinary');
+
+// Create single team/captain with logo upload
+router.post('/create-captain', uploadTeamLogo.single('logo'), async (req, res) => {
+  try {
+    // Log received data for debugging
+    console.log('Received body:', req.body);
+    console.log('Received file:', req.file);
+    
+    // Trim and extract fields from FormData
+    const teamName = req.body.teamName?.trim();
+    const captainName = req.body.captainName?.trim();
+    const captainPlayerId = req.body.captainPlayerId?.trim();
+    const teamId = req.body.teamId?.trim();
+    const pin = req.body.pin?.trim();
+    
+    console.log('Parsed fields:', { teamName, captainName, captainPlayerId, teamId, pin });
+    
+    // Validate required fields
+    if (!teamName || !captainPlayerId || !teamId || !pin) {
+      console.log('Validation failed - missing fields');
+      return res.status(400).json({ 
+        success: false, 
+        message: 'All fields are required: teamName, captainPlayerId, teamId, pin' 
+      });
+    }
+
+    const captainPlayer = await Player.findById(captainPlayerId);
+    if (!captainPlayer) {
+      return res.status(404).json({
+        success: false,
+        message: 'Selected captain player not found'
+      });
+    }
+
+    const isPlayerAvailableForCaptain =
+      captainPlayer.status === 'UNSOLD' &&
+      captainPlayer.availability === 'AVAILABLE' &&
+      !captainPlayer.soldTo;
+
+    if (!isPlayerAvailableForCaptain) {
+      return res.status(400).json({
+        success: false,
+        message: 'Selected captain player is not available'
+      });
+    }
+
+    // Check if teamId already exists
+    const existingTeam = await Team.findOne({ teamId });
+    if (existingTeam) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Team ID already exists' 
+      });
+    }
+
+    // Upload logo to Cloudinary if provided
+    let logoUrl = null;
+    if (req.file) {
+      try {
+        console.log('Uploading logo to Cloudinary:', req.file.path);
+        logoUrl = await uploadToCloudinary(req.file.path, 'teams');
+        console.log('Cloudinary upload successful:', logoUrl);
+      } catch (uploadError) {
+        console.error('Cloudinary upload error:', uploadError);
+        return res.status(500).json({ 
+          success: false, 
+          message: 'Failed to upload logo to Cloudinary: ' + uploadError.message 
+        });
+      }
+    }
+
+    // Fetch initial budget from AuctionState
+    const auctionState = await AuctionState.findOne();
+    const initialBudget = auctionState?.initialBudget || Number.parseInt(process.env.INITIAL_BUDGET) || 110;
+
+    // Create new team
+    const newTeam = new Team({
+      teamName,
+      captainName: captainName || captainPlayer.name,
+      teamId,
+      pin, // Will be hashed by pre-save middleware
+      logo: logoUrl,
+      remainingPoints: initialBudget,
+      rosterSlotsFilled: 1,
+      players: [captainPlayer._id]
+    });
+
+    await newTeam.save();
+
+    captainPlayer.status = 'SOLD';
+    captainPlayer.soldTo = newTeam._id;
+    captainPlayer.soldPrice = 0;
+    captainPlayer.soldAt = new Date();
+    await captainPlayer.save();
+
+    console.log('Team created successfully:', newTeam.teamId);
+
+    res.json({ 
+      success: true, 
+      message: 'Team and captain created successfully',
+      team: {
+        _id: newTeam._id,
+        teamName: newTeam.teamName,
+        captainName: newTeam.captainName,
+        teamId: newTeam.teamId,
+        pin: pin // Return unhashed PIN (only time it's shown)
+      },
+      captainPlayer: {
+        _id: captainPlayer._id,
+        name: captainPlayer.name
+      }
+    });
+  } catch (error) {
+    console.error('Error creating captain:', error);
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// Generate teams with PINs
+router.post('/generate-teams', async (req, res) => {
+  try {
+    const { count = 20, prefix = 'TEAM' } = req.body;
+    
+    const auctionState = await AuctionState.findOne();
+    const initialBudget = auctionState?.initialBudget || Number.parseInt(process.env.INITIAL_BUDGET) || 110;
+
+    const teams = [];
+    for (let i = 1; i <= count; i++) {
+      const teamNumber = String(i).padStart(2, '0');
+      const pin = String(Math.floor(1000 + Math.random() * 9000)); // 4-digit PIN
+      
+      teams.push({
+        teamName: `${prefix} ${teamNumber}`,
+        captainName: `Captain ${teamNumber}`,
+        teamId: `${prefix}${teamNumber}`,
+        pin: pin,
+        remainingPoints: initialBudget,
+        rosterSlotsFilled: 0,
+        players: []
+      });
+    }
+
+    const createdTeams = await Team.insertMany(teams);
+    
+    // Return teams with unhashed PINs for display (only once)
+    const teamsWithPins = createdTeams.map((team, index) => ({
+      teamId: team.teamId,
+      teamName: team.teamName,
+      captainName: team.captainName,
+      pin: teams[index].pin, // Original unhashed PIN
+      _id: team._id
+    }));
+
+    res.json({ 
+      success: true, 
+      message: `${createdTeams.length} teams created`,
+      teams: teamsWithPins
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// Reset entire auction
+router.post('/reset', async (req, res) => {
+  try {
+    // 1. Identify all captains (players linked to teams originally, tracked by soldPrice 0)
+    const captains = await Player.find({ soldPrice: 0, soldTo: { $ne: null } });
+    const captainIds = captains.map(c => c._id);
+
+    // Reset all players EXCEPT captains
+    await Player.updateMany(
+      { _id: { $nin: captainIds } },
+      {
+        status: 'UNSOLD',
+        soldTo: null,
+        soldPrice: null,
+        soldAt: null
+      }
+    );
+
+    // Get current configured budget
+    const auctionState = await AuctionState.findOne();
+    const initialBudget = auctionState?.initialBudget || Number.parseInt(process.env.INITIAL_BUDGET) || 110;
+
+    // Reset all teams, retaining their captains
+    const teams = await Team.find();
+    for (const team of teams) {
+      const teamCaptains = captains.filter(c => c.soldTo.toString() === team._id.toString());
+      const teamCaptainIds = teamCaptains.map(c => c._id);
+      
+      await Team.updateOne(
+        { _id: team._id },
+        {
+          remainingPoints: initialBudget,
+          rosterSlotsFilled: teamCaptainIds.length,
+          players: teamCaptainIds,
+          isOnline: false
+        }
+      );
+    }
+
+    // Clear all bids
+    await Bid.deleteMany({});
+
+    // Reset auction state
+    await AuctionState.deleteMany({});
+
+    res.json({ 
+      success: true, 
+      message: 'Auction reset successfully' 
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Delete all data (complete reset)
+router.delete('/clear-all', async (req, res) => {
+  try {
+    await Player.deleteMany({});
+    await Team.deleteMany({});
+    await Bid.deleteMany({});
+    await AuctionState.deleteMany({});
+
+    res.json({ 
+      success: true, 
+      message: 'All data cleared successfully' 
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get dashboard data
+router.get('/dashboard', async (req, res) => {
+  try {
+    const teams = await Team.find()
+      .select('-pin')
+      .populate('players', 'name category soldPrice');
+    
+    const players = await Player.find();
+    
+    const auctionState = await AuctionState.findOne()
+      .sort({ createdAt: 1, _id: 1 })
+      .populate('currentPlayer')
+      .populate('currentHighBid.team', 'teamName');
+
+    res.json({
+      success: true,
+      data: {
+        teams,
+        players: {
+          total: players.length,
+          sold: players.filter(p => p.status === 'SOLD').length,
+          unsold: players.filter(p => p.status === 'UNSOLD').length,
+          inAuction: players.filter(p => p.status === 'IN_AUCTION').length
+        },
+        auctionState,
+        onlineTeams: teams.filter(t => t.isOnline).length
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Update team details
+router.put('/teams/:id', async (req, res) => {
+  try {
+    const { teamName, captainName } = req.body;
+    
+    const team = await Team.findByIdAndUpdate(
+      req.params.id,
+      { teamName, captainName },
+      { new: true }
+    ).select('-pin');
+
+    if (!team) {
+      return res.status(404).json({ success: false, message: 'Team not found' });
+    }
+
+    res.json({ success: true, team });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// Update auction settings
+router.put('/settings', async (req, res) => {
+  try {
+    const { maxSquadSize, minBasePrice, initialBudget } = req.body;
+    
+    let auctionState = await AuctionState.findOne();
+    if (!auctionState) {
+      // Create it if it doesn't exist
+      auctionState = new AuctionState({});
+    }
+
+    if (maxSquadSize !== undefined) {
+      auctionState.maxSquadSize = maxSquadSize;
+    }
+    if (minBasePrice !== undefined) {
+      auctionState.minBasePrice = minBasePrice;
+    }
+    
+    let budgetDiff = 0;
+    const oldBudget = auctionState.initialBudget || 110;
+    if (initialBudget !== undefined && initialBudget !== oldBudget) {
+      budgetDiff = initialBudget - oldBudget;
+      auctionState.initialBudget = initialBudget;
+    }
+
+    await auctionState.save();
+
+    // If initialBudget changed, adjust all teams remaining points
+    if (budgetDiff !== 0) {
+      // Set the remainingPoints to the new initial budget directly for all teams
+      await Team.updateMany({}, { $set: { remainingPoints: initialBudget } });
+    }
+
+    // Broadcast the updated state to all connected clients so real-time UIs cascade immediately 
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('auction:state', {
+        type: 'config_update',
+        state: auctionState
+      });
+      // Optionally broadcast updated teams specifically
+      const teamsList = await Team.find({}).lean();
+      io.emit('teams:update', teamsList);
+    }
+
+    res.json({ success: true, auctionState });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// Clear all data
+router.post('/clear-all-data', async (req, res) => {
+  try {
+    // Delete all records from all collections
+    await Promise.all([
+      Player.deleteMany({}),
+      Team.deleteMany({}),
+      Bid.deleteMany({}),
+      AuctionState.deleteMany({})
+    ]);
+
+    // Reinitialize auction state
+    await AuctionState.create({
+      currentPlayer: null,
+      isActive: false,
+      isPaused: false,
+      currentHighBid: { amount: 5, team: null },
+      timerValue: Number.parseInt(process.env.TIMER_DURATION) || 20
+    });
+
+    res.json({ 
+      success: true, 
+      message: 'All data cleared successfully. Players, teams, bids, and auction state have been reset.' 
+    });
+  } catch (error) {
+    console.error('Clear data error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to clear data: ' + error.message 
+    });
+  }
+});
+
+module.exports = router;
