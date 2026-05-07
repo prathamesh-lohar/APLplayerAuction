@@ -304,6 +304,10 @@ router.put('/settings', async (req, res) => {
       auctionState = new AuctionState({});
     }
 
+    const oldMaxSquadSize = auctionState.maxSquadSize || 11;
+    const oldMinBasePrice = auctionState.minBasePrice || 20;
+    const oldBudget = auctionState.initialBudget || 110;
+
     if (maxSquadSize !== undefined) {
       auctionState.maxSquadSize = maxSquadSize;
     }
@@ -312,18 +316,26 @@ router.put('/settings', async (req, res) => {
     }
     
     let budgetDiff = 0;
-    const oldBudget = auctionState.initialBudget || 110;
-    if (initialBudget !== undefined && initialBudget !== oldBudget) {
-      budgetDiff = initialBudget - oldBudget;
-      auctionState.initialBudget = initialBudget;
+    const nextMaxSquadSize = maxSquadSize !== undefined ? maxSquadSize : oldMaxSquadSize;
+    const nextMinBasePrice = minBasePrice !== undefined ? minBasePrice : oldMinBasePrice;
+    let nextInitialBudget = oldBudget;
+
+    if (initialBudget !== undefined) {
+      nextInitialBudget = initialBudget;
+    } else if (nextMaxSquadSize !== oldMaxSquadSize) {
+      nextInitialBudget = oldBudget + (nextMaxSquadSize - oldMaxSquadSize) * nextMinBasePrice;
+    }
+
+    if (nextInitialBudget !== oldBudget) {
+      budgetDiff = nextInitialBudget - oldBudget;
+      auctionState.initialBudget = nextInitialBudget;
     }
 
     await auctionState.save();
 
     // If initialBudget changed, adjust all teams remaining points
     if (budgetDiff !== 0) {
-      // Set the remainingPoints to the new initial budget directly for all teams
-      await Team.updateMany({}, { $set: { remainingPoints: initialBudget } });
+      await Team.updateMany({}, { $inc: { remainingPoints: budgetDiff } });
     }
 
     // Broadcast the updated state to all connected clients so real-time UIs cascade immediately 
